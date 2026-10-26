@@ -216,6 +216,11 @@ pub(crate) struct MagicSock {
     closing: AtomicBool,
     /// Close was called.
     closed: AtomicBool,
+    /// Per-socket fault injection; absent from production and `test-utils` builds.
+    #[cfg(test)]
+    block_udp_send: AtomicBool,
+    #[cfg(test)]
+    block_relay_send: AtomicBool,
     /// If the last net_report report, reports IPv6 to be available.
     ipv6_reported: Arc<AtomicBool>,
 
@@ -597,8 +602,17 @@ impl MagicSock {
                             .map(|err| err.kind() == io::ErrorKind::WouldBlock)
                             .unwrap_or_default();
                         if udp_pending && relay_pending {
-                            // Handle backpressure.
-                            return Err(io::Error::new(io::ErrorKind::WouldBlock, "pending"));
+                            // `IoPoller::poll_writable` is Ready when *any* path is writable,
+                            // while this transmit can only use this node's paths. Returning
+                            // `WouldBlock` makes quinn retry it in a loop that never yields
+                            // while another path stays writable, which can pin every runtime
+                            // worker and starve the tasks that would unblock these paths.
+                            // Drop the transmit instead and let QUIC recover the loss.
+                            debug!(
+                                node = %node_id.fmt_short(),
+                                "all paths to node are blocked, dropping transmit",
+                            );
+                            return Ok(());
                         } else {
                             if relay_sent || udp_sent {
                                 trace!(
@@ -668,12 +682,10 @@ impl MagicSock {
                                "sent IpMapped transmit over UDP");
                             }
                             Err(err) => {
-                                // No need to print "WouldBlock" errors to the console
+                                // Never return "WouldBlock": see the `udp_pending &&
+                                // relay_pending` case above. Dropping lets QUIC recover.
                                 if err.kind() == io::ErrorKind::WouldBlock {
-                                    return Err(io::Error::new(
-                                        io::ErrorKind::WouldBlock,
-                                        "pending",
-                                    ));
+                                    debug!(dst = %addr, "udp path is blocked, dropping transmit");
                                 } else {
                                     warn!(
                                         dst = %addr,
@@ -705,6 +717,10 @@ impl MagicSock {
         node: NodeId,
         contents: RelayContents,
     ) -> io::Result<()> {
+        #[cfg(test)]
+        if self.block_relay_send.load(Ordering::Relaxed) {
+            return Err(io::ErrorKind::WouldBlock.into());
+        }
         trace!(
             node = %node.fmt_short(),
             relay_url = %url,
@@ -744,6 +760,10 @@ impl MagicSock {
 
     #[cfg(not(wasm_browser))]
     fn try_send_udp(&self, addr: SocketAddr, transmit: &quinn_udp::Transmit) -> io::Result<()> {
+        #[cfg(test)]
+        if self.block_udp_send.load(Ordering::Relaxed) {
+            return Err(io::ErrorKind::WouldBlock.into());
+        }
         let conn = self.conn_for_addr(addr)?;
         conn.try_send(transmit)?;
         let total_bytes: u64 = transmit.contents.len() as u64;
@@ -1770,6 +1790,10 @@ impl Handle {
             sockets,
             closing: AtomicBool::new(false),
             closed: AtomicBool::new(false),
+            #[cfg(test)]
+            block_udp_send: AtomicBool::new(false),
+            #[cfg(test)]
+            block_relay_send: AtomicBool::new(false),
             relay_datagram_recv_queue: relay_datagram_recv_queue.clone(),
             relay_datagram_send_channel: relay_datagram_send_tx,
             poll_recv_counter: AtomicUsize::new(0),
@@ -4140,6 +4164,85 @@ mod tests {
         )?;
         let connection = connect.await?;
         Ok(connection)
+    }
+
+    /// Exercise the actual send dispatch without depending on kernel buffer saturation.
+    /// A single try_send assertion fails on the old code instead of hanging the executor.
+    #[tokio::test]
+    async fn test_try_send_blocked_node_paths_drop_transmit() -> Result<()> {
+        let msock = MagicSock::spawn(Options::default()).await?;
+        let node_id = SecretKey::generate(rand::rngs::OsRng).public();
+        let udp_addr: SocketAddr = "127.0.0.1:12345".parse()?;
+        let relay_url: RelayUrl = "https://relay.invalid".parse()?;
+        msock.add_test_addr(NodeAddr {
+            node_id,
+            relay_url: Some(relay_url.clone()),
+            direct_addresses: [udp_addr].into_iter().collect(),
+        });
+        let mapped = msock.get_mapping_addr(node_id).expect("registered node");
+        let (_, udp, relay, _) = msock
+            .node_map
+            .get_send_addrs(mapped, false, &msock.metrics.magicsock)
+            .expect("registered node");
+        assert_eq!(udp, Some(udp_addr));
+        assert_eq!(relay, Some(relay_url));
+        msock.block_udp_send.store(true, Ordering::Relaxed);
+        msock.block_relay_send.store(true, Ordering::Relaxed);
+
+        let transmit = quinn_udp::Transmit {
+            destination: mapped.private_socket_addr(),
+            ecn: None,
+            contents: b"blocked",
+            segment_size: None,
+            src_ip: None,
+        };
+        // Readiness is global, not tied to the blocked destination.
+        let mut poller = msock.msock.clone().create_io_poller();
+        tokio::time::timeout(
+            Duration::from_secs(1),
+            std::future::poll_fn(|cx| poller.as_mut().poll_writable(cx)),
+        )
+        .await??;
+        msock.try_send(&transmit)?;
+        // A blocked path must not suppress the other usable path either.
+        msock.block_udp_send.store(false, Ordering::Relaxed);
+        msock.try_send(&transmit)?;
+        msock.close().await;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_try_send_blocked_ip_path_drops_transmit() -> Result<()> {
+        let msock = MagicSock::spawn(Options::default()).await?;
+        let udp_addr: SocketAddr = "127.0.0.1:12345".parse()?;
+        let mapped = msock.ip_mapped_addrs.get_or_register(udp_addr);
+        let transmit = quinn_udp::Transmit {
+            destination: mapped.private_socket_addr(),
+            ecn: None,
+            contents: b"blocked",
+            segment_size: None,
+            src_ip: None,
+        };
+        msock.block_udp_send.store(true, Ordering::Relaxed);
+        assert_eq!(
+            msock.try_send_udp(udp_addr, &transmit).unwrap_err().kind(),
+            io::ErrorKind::WouldBlock
+        );
+        let mut poller = msock.msock.clone().create_io_poller();
+        tokio::time::timeout(
+            Duration::from_secs(1),
+            std::future::poll_fn(|cx| poller.as_mut().poll_writable(cx)),
+        )
+        .await??;
+        msock.try_send(&transmit)?;
+        msock.block_udp_send.store(false, Ordering::Relaxed);
+        msock.try_send(&transmit)?;
+        msock.close().await;
+        assert_eq!(
+            msock.try_send(&transmit).unwrap_err().kind(),
+            io::ErrorKind::NotConnected
+        );
+        Ok(())
     }
 
     #[tokio::test]
