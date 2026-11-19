@@ -1,4 +1,27 @@
-# iroh
+# iroh-fedimint
+
+This is Fedimint's **Iroh 0.35.0 compatibility fork**, published as
+`iroh-fedimint`. It retains the Rust library name `iroh` and the upstream
+MIT OR Apache-2.0 licenses and attribution. It is not the current upstream Iroh
+release. Only the `iroh` package is forked; `iroh-base`, `iroh-relay`, and the
+Iroh Quinn packages remain upstream dependencies.
+
+```toml
+[dependencies]
+iroh = { package = "iroh-fedimint", version = "=0.35.0", default-features = false }
+```
+
+The fork treats blocked outgoing paths as packet loss instead of returning
+`WouldBlock` to the old Quinn socket API. Reliable QUIC streams recover through
+normal loss recovery; unreliable datagrams may be lost. This avoids a
+destination-independent writable poller causing a synchronous retry loop.
+This does not change public APIs, ALPNs, packet encoding, or TLS identity.
+It does not make Iroh 0.35 wire-compatible with modern Iroh.
+
+See [release notes and publication instructions](RELEASE.md) for provenance,
+validation, compatibility limits, and the intentionally narrow backport scope.
+
+## Upstream overview
 
 Iroh is a library to establish direct connectivity between peers.
 It's built on peer-to-peer [QUIC](https://en.wikipedia.org/wiki/QUIC) using both relays and holepunching.

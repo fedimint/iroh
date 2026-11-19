@@ -2,6 +2,17 @@
 
 All notable changes to iroh will be documented in this file.
 
+## iroh-fedimint 0.35.0 (prepared, not published)
+
+- Package-only fork of upstream Iroh 0.35.0; preserves the `iroh` library name
+  and upstream companion dependencies.
+- Backport `fedibtc/iroh` commit `a5b069896b2f320a50b71cb0e77ba67457aa253f`:
+  treat blocked node and mapped-IP sends as packet loss instead of returning
+  `WouldBlock` to the globally writable old Quinn socket poller.
+- Add deterministic send-path regression tests and
+  [release/provenance instructions](iroh/RELEASE.md). No newer transport
+  refactor or unrelated relay behavior changes are included.
+
 ## [0.35.0](https://github.com/n0-computer/iroh/compare/v0.34.1..0.35.0) - 2025-05-12
 
 ### ⛰️  Features
@@ -2247,5 +2258,4 @@ All notable changes to iroh will be documented in this file.
 - On_collection doesn't need to be FnMut ([#136](https://github.com/n0-computer/iroh/issues/136)) - ([eac7b65](https://github.com/n0-computer/iroh/commit/eac7b65a6760c0cf55d455ca5a7e9e523698c7a1))
 - Allow older rust version ([#142](https://github.com/n0-computer/iroh/issues/142)) - ([f3086a9](https://github.com/n0-computer/iroh/commit/f3086a9576fdc0cdfbd6b0646745bec9e91f7d60))
 - Use our own bao crate - ([659d2d2](https://github.com/n0-computer/iroh/commit/659d2d22254ea1d3f185ec0d4c8be4e7bf4374df))
-
 

@@ -1,18 +1,19 @@
 [package]
-name = "iroh"
+name = "iroh-fedimint"
 version = "0.35.0"
 edition = "2021"
 readme = "README.md"
-description = "p2p quic connections dialed by public key"
+description = "Fedimint's compatibility fork of iroh 0.35: p2p QUIC connections dialed by public key"
 license = "MIT OR Apache-2.0"
 authors = ["dignifiedquire <me@dignifiedquire.com>", "n0 team"]
-repository = "https://github.com/n0-computer/iroh"
+repository = "https://github.com/fedimint/iroh"
 keywords = ["quic", "networking", "holepunching", "p2p"]
 
 # Sadly this also needs to be updated in .github/workflows/ci.yml
 rust-version = "1.81"
 
 [lib]
+name = "iroh"
 # We need "cdylib" to actually generate .wasm files when we run with --target=wasm32-unknown-unknown.
 # It would be nice if we could make this target-dependent, but we can't (yet): https://github.com/rust-lang/cargo/issues/12260
 crate-type = ["lib", "cdylib"]

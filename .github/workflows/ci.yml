@@ -183,7 +183,7 @@ jobs:
         run: cargo build --target wasm32-unknown-unknown -p iroh-relay --no-default-features
 
       - name: wasm32 build (iroh)
-        run: cargo build --target wasm32-unknown-unknown -p iroh --no-default-features
+        run: cargo build --target wasm32-unknown-unknown -p iroh-fedimint --no-default-features
 
       # If the Wasm file contains any 'import "env"' declarations, then
       # some non-Wasm-compatible code made it into the final code.
@@ -196,7 +196,7 @@ jobs:
           ! wasm-tools print --skeleton target/wasm32-unknown-unknown/debug/iroh.wasm | grep 'import "env"'
 
       - name: Run integration test in wasm
-        run: cargo test -p iroh --test integration --target=wasm32-unknown-unknown --no-default-features
+        run: cargo test -p iroh-fedimint --test integration --target=wasm32-unknown-unknown --no-default-features
 
   check_semver:
     runs-on: ubuntu-latest
@@ -224,7 +224,9 @@ jobs:
         # uses: obi1kenobi/cargo-semver-checks-action@v2
         uses: n0-computer/cargo-semver-checks-action@feat-baseline
         with:
-          package: iroh, iroh-base, iroh-dns-server, iroh-bench, iroh-relay, iroh-net-report
+          # iroh-fedimint is a new package, absent from the upstream baseline.
+          # Check the unchanged companion libraries against that baseline.
+          package: iroh-base, iroh-relay
           baseline-rev: ${{ env.HEAD_COMMIT_SHA }}
           use-cache: false
 

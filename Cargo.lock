@@ -2204,7 +2204,98 @@ dependencies = [
 ]
 
 [[package]]
-name = "iroh"
+name = "iroh-base"
+version = "0.35.0"
+dependencies = [
+ "curve25519-dalek",
+ "data-encoding",
+ "derive_more",
+ "ed25519-dalek",
+ "postcard",
+ "proptest",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
+ "serde",
+ "serde_json",
+ "serde_test",
+ "thiserror 2.0.12",
+ "url",
+]
+
+[[package]]
+name = "iroh-bench"
+version = "0.35.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "clap",
+ "hdrhistogram",
+ "iroh-fedimint",
+ "iroh-metrics",
+ "iroh-quinn",
+ "n0-future",
+ "rand 0.8.5",
+ "rcgen",
+ "rustls",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "iroh-dns-server"
+version = "0.35.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum",
+ "axum-server",
+ "base64-url",
+ "bytes",
+ "clap",
+ "criterion",
+ "derive_more",
+ "dirs-next",
+ "governor",
+ "hickory-resolver",
+ "hickory-server",
+ "http 1.3.1",
+ "humantime",
+ "humantime-serde",
+ "iroh-fedimint",
+ "iroh-metrics",
+ "lru 0.12.5",
+ "n0-future",
+ "pkarr",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "rcgen",
+ "redb",
+ "regex",
+ "rustls",
+ "rustls-pemfile",
+ "serde",
+ "struct_iterable",
+ "strum",
+ "testresult",
+ "tokio",
+ "tokio-rustls",
+ "tokio-rustls-acme",
+ "tokio-stream",
+ "tokio-util",
+ "toml",
+ "tower-http",
+ "tower_governor",
+ "tracing",
+ "tracing-subscriber",
+ "tracing-test",
+ "ttl_cache",
+ "url",
+ "z32",
+]
+
+[[package]]
+name = "iroh-fedimint"
 version = "0.35.0"
 dependencies = [
  "aead",
@@ -2275,97 +2366,6 @@ dependencies = [
  "wasm-bindgen-test",
  "webpki-roots 0.26.11",
  "x509-parser",
- "z32",
-]
-
-[[package]]
-name = "iroh-base"
-version = "0.35.0"
-dependencies = [
- "curve25519-dalek",
- "data-encoding",
- "derive_more",
- "ed25519-dalek",
- "postcard",
- "proptest",
- "rand 0.8.5",
- "rand_core 0.6.4",
- "serde",
- "serde_json",
- "serde_test",
- "thiserror 2.0.12",
- "url",
-]
-
-[[package]]
-name = "iroh-bench"
-version = "0.35.0"
-dependencies = [
- "anyhow",
- "bytes",
- "clap",
- "hdrhistogram",
- "iroh",
- "iroh-metrics",
- "iroh-quinn",
- "n0-future",
- "rand 0.8.5",
- "rcgen",
- "rustls",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "iroh-dns-server"
-version = "0.35.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "axum",
- "axum-server",
- "base64-url",
- "bytes",
- "clap",
- "criterion",
- "derive_more",
- "dirs-next",
- "governor",
- "hickory-resolver",
- "hickory-server",
- "http 1.3.1",
- "humantime",
- "humantime-serde",
- "iroh",
- "iroh-metrics",
- "lru 0.12.5",
- "n0-future",
- "pkarr",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
- "rcgen",
- "redb",
- "regex",
- "rustls",
- "rustls-pemfile",
- "serde",
- "struct_iterable",
- "strum",
- "testresult",
- "tokio",
- "tokio-rustls",
- "tokio-rustls-acme",
- "tokio-stream",
- "tokio-util",
- "toml",
- "tower-http",
- "tower_governor",
- "tracing",
- "tracing-subscriber",
- "tracing-test",
- "ttl_cache",
- "url",
  "z32",
 ]
 

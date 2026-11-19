@@ -61,7 +61,7 @@ z32 = "1.1.1"
 [dev-dependencies]
 criterion = "0.5.1"
 hickory-resolver = "0.25.0"
-iroh = { path = "../iroh" }
+iroh = { package = "iroh-fedimint", path = "../iroh" }
 rand = "0.8"
 rand_chacha = "0.3.1"
 testresult = "0.4.1"
